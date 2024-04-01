@@ -1,0 +1,101 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>注册页面</title>
+    <link type="text/css" rel="stylesheet" href="css/layui.css">
+</head>
+<body>
+
+<style>
+    .demo-reg-container {
+        width: 320px;
+        margin: 21px auto 0;
+    }
+
+    .demo-reg-other .layui-icon {
+        position: relative;
+        display: inline-block;
+        margin: 0 2px;
+        top: 2px;
+        font-size: 26px;
+    }
+</style>
+<form class="layui-form">
+    <div class="demo-reg-container">
+
+        <div class="layui-form-item">
+            <div class="layui-input-wrap">
+                <div class="layui-input-prefix">
+                    <i class="layui-icon layui-icon-username"></i>
+                </div>
+                <input type="text" name="username" value="" lay-verify="required" placeholder="用户名" autocomplete="off"
+                       class="layui-input" lay-affix="clear">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <div class="layui-input-wrap">
+                <div class="layui-input-prefix">
+                    <i class="layui-icon layui-icon-password"></i>
+                </div>
+                <input type="password" name="password" value="" lay-verify="required" placeholder="密码"
+                       autocomplete="off" class="layui-input" id="reg-password" lay-affix="eye">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <div class="layui-input-wrap">
+                <div class="layui-input-prefix">
+                    <i class="layui-icon layui-icon-password"></i>
+                </div>
+                <input type="password" name="confirmPassword" value="" lay-verify="required|confirmPassword"
+                       placeholder="确认密码" autocomplete="off" class="layui-input" lay-affix="eye">
+            </div>
+        </div>
+
+        <div class="layui-form-item demo-reg-other">
+            <a href="/login">登录已有帐号</a>
+        </div>
+
+        <div class="layui-form-item">
+            <button class="layui-btn layui-btn-fluid" lay-submit lay-filter="register">注册</button>
+        </div>
+    </div>
+</form>
+</body>
+
+<script type="text/javascript" src="layui.js"></script>
+<script type="text/javascript" src="jquery-3.5.1.min.js"></script>
+
+<script type="text/javascript">
+    layui.use(['table', 'layer', 'form', 'laypage'], function () {
+        var table = layui.table;
+        var form = layui.form;
+
+        // 自定义验证规则
+        form.verify({
+            // 确认密码
+            confirmPassword: function (value, item) {
+                var passwordValue = $('#reg-password').val();
+                if (value !== passwordValue) {
+                    return '两次密码输入不一致';
+                }
+            }
+        });
+
+
+        form.on('submit(register)', function (data) {
+            $.post("register", data.field, function (data) {
+                if (data.success) {     //如果为true,修改成功
+                    layer.alert("注册成功！", {icon: 1}, function () {
+                        // 用户点击确认后执行跳转到登录界面
+                        window.location.href = "login";
+                    });  // 直接跳转到登录界面。
+                } else {
+                    layer.alert("注册失败，用户名重复！", {icon: 2})
+                }
+            }, "json");
+            return false;
+        });
+    });
+</script>

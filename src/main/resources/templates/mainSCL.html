@@ -1,0 +1,208 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>核心页面</title>
+    <link type="text/css" rel="stylesheet" href="css/layui.css">
+</head>
+<body>
+
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo layui-hide-xs layui-bg-black">智能合约漏洞检测平台</div>
+    </div>
+
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+            <ul class="layui-nav layui-nav-tree" lay-filter="test">
+                <li class="layui-nav-item"><a href="/mainSCC">源代码合约级别漏洞检测</a></li>
+                <li class="layui-nav-item"><a href="/mainSCL">源代码行级别漏洞检测</a></li>
+                <li class="layui-nav-item"><a href="/mainBCC">字节码合约级别漏洞检测</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="layui-body">
+        <!-- 内容主体区域 -->
+        <div style="padding: 15px;">
+            <div class="layui-card layui-panel">
+                <div class="layui-card-header">
+                    智能合约源代码文件-行级别漏洞检测
+                </div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="ID-test-table"></table>
+
+                    <div class="layui-btn-container">
+                    </div>
+
+                </div>
+            </div>
+            <br><br>
+        </div>
+    </div>
+</div>
+
+</body>
+
+<script type="text/javascript" src="layui.js"></script>
+<script type="text/javascript" src="jquery-3.5.1.min.js"></script>
+
+
+<script type="text/html" id="ID-demo-table-tool">
+    {{#  if(d.state === 'Pending'){ }}
+    <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="detect">检测</a>
+    {{#  } }}
+    {{#  if(d.state.includes('Detecting')){ }}
+    <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="refreshSCL">刷新</a>
+    {{#  } }}
+    {{#  if(d.log !== 'Pending'){ }}
+    <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="download">下载日志</a>
+    <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="showCode">显示详情</a>
+    <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="showGraphSCL">显示图结构</a>
+    {{#  } }}
+</script>
+
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container">
+        <button type="button" class="layui-btn layui-btn-sm" id="ID-upload-demo-choose">上传文件</button>
+        <button class="layui-btn layui-btn-sm" lay-event="deleteTask">删除任务</button>
+        <button class="layui-btn layui-btn-sm" lay-event="refresh">刷新</button>
+    </div>
+</script>
+
+
+<script type="text/javascript">
+    function getCookie(name) {
+        var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        if (match) return decodeURIComponent(match[2]);
+    }
+
+    var userId = getCookie("userId");
+    var username = getCookie("username");
+
+    layui.use(['element', 'layer', 'util'], function () {
+
+        var element = layui.element;
+        var layer = layui.layer;
+        var util = layui.util;
+        var upload = layui.upload; // 上传
+        var table = layui.table;
+
+        // 渲染表格
+        table.render({
+            elem: '#ID-test-table',
+            height: 720,
+            url: '/mainSCLData', // 数据接口（此处为静态数据，仅作演示）
+            where: {
+                "userId": userId,
+                "username": username
+            },
+            toolbar: '#toolbarDemo',
+            title: '任务详情表',
+            page: true, // 开启分页
+            limit: 15,
+            limits: [10, 15, 20, 25],
+            cols: [
+                [
+                    {type: 'checkbox', fixed: 'left'},
+                    {field: 'recordId', title: '记录号', sort: true, fixed: 'left', width:190},
+                    {field: 'filePath', title: '文件', width:250},
+                    {field: 'uploadTime', title: '上传时间', width:160},
+                    {field: 'totalBytes', title: '总字节数', width: 90},
+                    {field: 'vulnerability', title: '包含漏洞'},
+                    {field: 'state', title: '检测状态', width: 120},
+                    {field: 'hash', title: '文件哈希值', width: 110},
+                    {field: 'log', title: '日志', width: 170},
+                    {fixed: 'right', title: '操作', align: 'center', toolbar: '#ID-demo-table-tool', width:250}
+                ]
+            ]
+        });
+
+        // 头部工具栏事件
+        table.on('toolbar(ID-test-table)', function (obj) {
+            var id = obj.config.id;
+            var checkStatus = table.checkStatus(id);
+            var othis = lay(this);
+            switch (obj.event) {
+                case 'deleteTask':
+                    var data = checkStatus.data;
+                    // 提取每个对象的recordId组成新的数组
+                    var recordIds = data.map(function (item) {
+                        return item.recordId;
+                    });
+                    $.post("removeSCL", {"recordIds": recordIds}, function (retData) {
+                        if (retData.success) {//如果为true,修改成功
+                            layer.alert("删除成功！", {icon: 1}, function () {
+                                // 用户点击确认后执行跳转到SCC主题界面
+                                window.location.href = "mainSCL";
+                            });
+                        } else {
+                            layer.alert("删除失败，请刷新页面重试！", {icon: 2})
+                        }
+                    }, "json");
+                    break;
+                case 'refresh':  // 刷新数据
+                    window.location.href = "mainSCL";
+                    break;
+            }
+        });
+
+        // 渲染
+        upload.render({
+            elem: '#ID-upload-demo-choose',
+            url: '/uploadSCL', // 此处配置你自己的上传接口即可
+            data: {
+                "userId": userId
+            },
+            auto: true,
+            accept: "file",
+            exts:"sol",
+            done: function (res) {
+                layer.msg('上传成功');
+                window.location.href = "mainSCL";
+            }
+        });
+
+        // 单元格工具事件
+        table.on('tool(ID-test-table)', function (obj) {
+            var data = obj.data; // 获得当前行数据
+            var layEvent = obj.event; // 获得 lay-event 对应的值
+
+            if (layEvent === 'detect') {
+                $.post("detectSCL", {"recordId": data['recordId']}, function (retData) {
+                    if (retData.success) {//如果为true,修改成功
+                        layer.alert("开始检测！", {icon: 1}, function () {
+                            // 用户点击确认后执行跳转到SCC主题界面
+                            window.location.href = "mainSCL";
+                        });
+                    } else {
+                        layer.alert("检测失败，请刷新页面重试！", {icon: 2})
+                    }
+                }, "json");
+            } else if (layEvent === 'refreshSCL') {  // 刷新单条SSC记录。
+                $.post("refreshSCL", {"recordId": data['recordId']}, function (retData) {
+                    if (retData.success) {//如果为true,修改成功
+                        layer.alert("刷新成功！", {icon: 1});
+                        // 用户点击确认后执行跳转到SCL主题界面
+                        window.location.href = "mainSCL";
+                    } else {
+                        layer.alert("刷新失败，请刷新页面重试！", {icon: 2})
+                    }
+                }, "json");
+            } else if (layEvent === 'download') {
+                // 创建一个隐藏的<a>标签
+                var downloadLink = document.createElement("a");
+                downloadLink.href = "/downloadSCL?recordId=" + data['recordId']; // 设置下载接口的路径，并传递参数
+                downloadLink.target = "_blank"; // 在新窗口中打开
+                downloadLink.style.display = "none"; // 隐藏<a>标签
+                document.body.appendChild(downloadLink); // 添加到页面中
+
+                // 触发点击事件，开始下载文件
+                downloadLink.click();
+            } else if (layEvent === 'showCode') {
+                window.location.href = "showCode?recordId=" + data['recordId'];
+            } else if (layEvent === 'showGraphSCL') {
+                window.location.href = "showGraphSCL?recordId=" + data['recordId'] + "&start=-1&end=-1";
+            }
+        });
+    });
+</script>

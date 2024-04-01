@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.BCCMapper">
+    <resultMap id="BCCRecordResultMap" type="BCCRecord">
+        <id column="recordId" property="recordId" jdbcType="VARCHAR"/>
+        <result column="filePath" property="filePath" jdbcType="VARCHAR"/>
+        <result column="uploadTime" property="uploadTime" jdbcType="VARCHAR"/>
+        <result column="totalBytes" property="totalBytes" jdbcType="VARCHAR"/>
+        <result column="vulnerability" property="vulnerability" jdbcType="BOOLEAN"/>
+        <result column="state" property="state" jdbcType="VARCHAR"/>
+        <result column="log" property="log" jdbcType="VARCHAR"/>
+        <result column="hash" property="hash" jdbcType="VARCHAR"/>
+        <result column="userId" property="userId" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="findRecordByUserId" resultMap="BCCRecordResultMap">
+        select
+            recordId,
+            SUBSTRING_INDEX(filePath, '/', -1) AS filePath,
+            uploadTime,
+            totalBytes,
+            vulnerability,
+            state,
+            SUBSTRING(hash, 1, 10) AS hash,
+            SUBSTRING_INDEX(log, '/', -1) AS log
+        from
+            BCCrecord
+        where
+            userId = #{userId}
+    </select>
+
+    <insert id="uploadBCC">
+        INSERT INTO BCCRecord (recordId, filePath, uploadTime, totalBytes, vulnerability, state, log, hash, userId)
+        values(#{recordId}, #{filePath}, #{uploadTime}, #{totalBytes}, #{vulnerability}, #{state}, #{log}, #{hash}, #{userId})
+    </insert>
+
+    <select id="findBCCByRecordId" resultMap="BCCRecordResultMap">
+        select * from BCCrecord where recordId = #{recordId}
+    </select>
+
+    <delete id="removeBCC">
+        delete from BCCrecord
+        <where>
+            recordId
+            <foreach collection="recordIds" item="recordId" index="index" open="in (" close=")" separator=",">
+                #{recordId}
+            </foreach>
+        </where>
+    </delete>
+
+    <update id="detectBCC">
+        update BCCrecord set state = 'Detecting(${num}/7)' where recordId = #{recordId}
+    </update>
+
+    <update id="overBCC">
+        update BCCrecord set vulnerability=#{vulnerability}, state = #{state}, log=#{log} where recordId = #{recordId}
+    </update>
+</mapper>

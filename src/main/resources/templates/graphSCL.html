@@ -1,0 +1,240 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>核心页面</title>
+    <link type="text/css" rel="stylesheet" href="css/layui.css">
+    <style>
+        .links line, .links path {
+            stroke-opacity: 0.6;
+        }
+
+        .nodes circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+
+        text {
+            font-family: Sans-Serif;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo layui-hide-xs layui-bg-black">智能合约漏洞检测平台</div>
+    </div>
+
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+            <ul class="layui-nav layui-nav-tree" lay-filter="test">
+                <li class="layui-nav-item"><a href="/mainSCC">源代码合约级别漏洞检测</a></li>
+                <li class="layui-nav-item"><a href="/mainSCL">源代码行级别漏洞检测</a></li>
+                <li class="layui-nav-item"><a href="/mainBCC">字节码合约级别漏洞检测</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="layui-body">
+        <!-- 内容主体区域 -->
+        <div style="padding: 15px;">
+            <div class="layui-card layui-panel">
+                <div class="layui-card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div th:text="${title}"></div>
+                    <a class="layui-btn layui-btn-sm" style="float: right;" href="/mainSCL">返回</a>
+                </div>
+
+                <div class="layui-card-body" style="height: 730px">
+                    <div id="slogan" style="float: right; margin-left: 20px;margin-right: 20px;height: 100%;"> <!-- 左侧的 div 元素 -->
+                        <!-- 这里放置你的 div 内容 -->
+                        <div id="ID-slider-demo-range-1" style="height: 100%;"></div>
+                    </div>
+                    <div style="float: left;"> <!-- 右侧的 svg 元素 -->
+                        <!-- 这里放置你的 svg 内容 -->
+                        <svg width="960" height="600"></svg>
+                    </div>
+                    <div style="clear: both;"></div> <!-- 清除浮动，确保下方内容不受影响 -->
+                </div>
+            </div>
+            <br><br>
+        </div>
+    </div>
+</div>
+
+</body>
+
+<script src="https://d3js.org/d3.v6.min.js"></script>
+<script type="text/javascript" src="layui.js"></script>
+<script type="text/javascript" src="jquery-3.5.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-solidity.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/themes/prism.min.css" rel="stylesheet">
+
+<script type="text/javascript">
+    function getCookie(name) {
+        var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        if (match) return decodeURIComponent(match[2]);
+    }
+
+    var userId = getCookie("userId");
+    var username = getCookie("username");
+
+    // 获取具有类名为 "layui-card-body" 的第一个元素
+    var element = document.querySelector('.layui-card-body');
+
+    // 获取元素的宽度和高度
+    var width = element.offsetWidth - 107;
+    var height = element.offsetHeight - 30;
+
+    layui.use(function(){
+        var slider = layui.slider;
+        var layer = layui.layer;
+        /*<![CDATA[*/
+        /* 在Thymeleaf中使用[[...]]语法来输出后端传递的数据 */
+        var start = [[${start}]]; // 从后端传递的 start 值
+        var end = [[${end}]]; // 从后端传递的 end 值
+        var total = [[${total}]]; // 从后端传递的 total 值
+        var recordId = "[[${recordId}]]"; // 从后端传递的 recordId 值
+        /*]]>*/
+        layer.msg(start + " " + end + " " + total);
+        // 渲染
+        slider.render({
+            elem: '#ID-slider-demo-range-1',
+            value: [start, end], // 初始值
+            range: true, // 范围选择
+            type: 'vertical', // 垂直滑块
+            min: 0,
+            max: total,
+            height: height,
+            done: function(vals){
+                layer.msg('开始值：'+ vals[0] + '、结尾值：'+ vals[1]);
+                window.location.href = "showGraphSCL?recordId=" + recordId + "&start=" + vals[0] + "&end=" + vals[1];
+            }
+        });
+    });
+</script>
+
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    /* 在Thymeleaf中使用[[...]]语法来输出后端传递的数据 */
+    var links = /*[[${data}]]*/ [];
+    /*]]>*/
+
+    var nodes = {};
+
+    links.forEach(function(link) {
+        link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
+        link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+    });
+
+    // Assign curvature based on the link order between two nodes
+    links.forEach(function(link, i, links) {
+        const sameLinks = links.filter(l => l.source === link.source && l.target === link.target);
+        const index = sameLinks.indexOf(link);
+        if (sameLinks.length === 3) {
+            link.curvature = index - 1; // This will set curvatures to -1, 0, 1
+        } else {
+            link.curvature = 0; // Default to straight line for other cases
+        }
+    });
+
+    var svg = d3.select("body").select("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .call(d3.zoom().on("zoom", function(event) {
+            container.attr("transform", event.transform);
+        }))
+        .append("g");
+
+    var container = svg.append("g");
+
+    svg.append("defs").selectAll("marker")
+        .data(["arrow"])
+        .enter().append("marker")
+        .attr("id", function(d) { return d; })
+        .attr("viewBox", "0 0 10 10")
+        .attr("refX", 18) // Move the arrow away from the node
+        .attr("refY", 5) // Center the arrow vertically
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("fill", "black") // Change arrow color to black
+        .attr("d", "M0,0 L0,10 L10,5 Z");
+
+    var simulation = d3.forceSimulation()
+        .nodes(Object.values(nodes))
+        .force("link", d3.forceLink(links).id(function(d) { return d.name; }).distance(100))
+        .force("charge", d3.forceManyBody().strength(-300))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    var link = container.append("g")
+        .attr("class", "links")
+        .selectAll("path")
+        .data(links)
+        .enter().append("path")
+        .attr("fill", "none")
+        .attr("stroke", function(d) { return d.color; })
+        .attr("stroke-opacity", 0.6)
+        .attr("marker-end", "url(#arrow)");
+
+    var node = container.append("g")
+        .attr("class", "nodes")
+        .selectAll("circle")
+        .data(Object.values(nodes))
+        .enter().append("circle")
+        .attr("r", 5)
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    var text = container.append("g")
+        .attr("class", "labels")
+        .selectAll("text")
+        .data(Object.values(nodes))
+        .enter().append("text")
+        .attr("dx", 8)
+        .attr("dy", ".35em")
+        .text(function(d) { return d.name; });
+
+    simulation.on("tick", ticked);
+
+    function ticked() {
+        link.attr("d", function(d) {
+            if (d.curvature === 0) {
+                return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;
+            } else {
+                var dx = d.target.x - d.source.x,
+                    dy = d.target.y - d.source.y,
+                    dr = Math.sqrt(dx * dx + dy * dy) * d.curvature;
+                return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,${d.curvature > 0 ? 1 : 0} ${d.target.x},${d.target.y}`;
+            }
+        });
+
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+
+        text.attr("x", function(d) { return d.x; })
+            .attr("y", function(d) { return d.y; });
+    }
+
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+</script>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.MainMapper">
+    <resultMap id="RecordResultMap" type="Record">
+        <id column="recordId" property="recordId" jdbcType="VARCHAR"/>
+        <result column="filePath" property="filePath" jdbcType="VARCHAR"/>
+        <result column="uploadTime" property="uploadTime" jdbcType="VARCHAR"/>
+        <result column="totalBytes" property="totalBytes" jdbcType="VARCHAR"/>
+        <result column="vulnerability" property="vulnerability" jdbcType="BOOLEAN"/>
+        <result column="state" property="state" jdbcType="VARCHAR"/>
+        <result column="log" property="log" jdbcType="VARCHAR"/>
+        <result column="hash" property="hash" jdbcType="VARCHAR"/>
+        <result column="userId" property="userId" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="findRecordByUserId" resultMap="RecordResultMap">
+        select
+            recordId,
+            SUBSTRING_INDEX(filePath, '/', -1) AS filePath,
+            uploadTime,
+            totalBytes,
+            vulnerability,
+            state,
+            SUBSTRING(hash, 1, 10) AS hash,
+            SUBSTRING_INDEX(log, '/', -1) AS log
+        from
+            record
+        where
+            userId = #{userId}
+    </select>
+
+    <insert id="uploadSCC">
+        INSERT INTO Record (recordId, filePath, uploadTime, totalBytes, vulnerability, state, log, hash, userId)
+        values(#{recordId}, #{filePath}, #{uploadTime}, #{totalBytes}, #{vulnerability}, #{state}, #{log}, #{hash}, #{userId})
+    </insert>
+
+    <delete id="removeSCC">
+        delete from record
+        <where>
+            recordId
+            <foreach collection="recordIds" item="recordId" index="index" open="in (" close=")" separator=",">
+                #{recordId}
+            </foreach>
+        </where>
+    </delete>
+
+    <update id="detectSCC">
+        update record set state = 'Detecting(${num}/7)' where recordId = #{recordId}
+    </update>
+
+    <select id="findSCCByRecordId" resultMap="RecordResultMap">
+        select * from record where recordId = #{recordId}
+    </select>
+
+    <update id="overSCC">
+        update record set vulnerability=#{vulnerability}, state = #{state}, log=#{log} where recordId = #{recordId}
+    </update>
+</mapper>
